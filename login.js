@@ -4,7 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password');
 
     // Se o usuário já estiver logado, redireciona para o chat
-    if (localStorage.getItem('bellaTrixUsername')) {
+    const username = localStorage.getItem('bellaTrixUsername');
+    const coupleId = localStorage.getItem('bellaTrixCoupleId');
+
+    if (username && coupleId) { // Verifica se AMBOS os itens existem
         window.location.href = 'index.html';
     }
 
@@ -24,7 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) {
                 localStorage.setItem('bellaTrixUsername', result.username);
-                localStorage.setItem('bellaTrixProfilePic', result.profile_pic);
+                localStorage.setItem('bellaTrixCoupleId', result.coupleId); // Salva o ID do casal
+                localStorage.setItem('bellaTrixProfilePic', result.profile_pic); // Salva a foto de perfil
                 window.location.href = 'index.html';
             } else {
                 alert(result.message);

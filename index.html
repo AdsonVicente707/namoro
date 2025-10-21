@@ -11,6 +11,7 @@
 <body>
     <header>
         <h1 id="welcomeTitle"></h1>
+        <button id="logoutButton">Sair</button>
         <p>Te amo neguinha</p>
     </header>
     <main>
@@ -31,6 +32,19 @@
                 <button id="emojiButton">😊</button>
                 <input type="text" id="chatInput" placeholder="Digite sua mensagem...">
                 <button id="sendButton">Enviar</button>
+            </div>
+        </section>
+        <!-- Seção do Mural de Fotos -->
+        <section class="photo-wall-container">
+            <h2>Nosso Mural de Memórias 📸</h2>
+            <form id="photoUploadForm" class="photo-upload-form">
+                <input type="file" id="photoInput" name="photo" accept="image/*" required>
+                <label for="photoInput" class="file-label">Escolher Foto</label>
+                <textarea id="captionInput" placeholder="Escreva uma legenda..."></textarea>
+                <button type="submit">Adicionar ao Mural</button>
+            </form>
+            <div id="photoGallery" class="photo-gallery">
+                <!-- As fotos serão inseridas aqui pelo JavaScript -->
             </div>
         </section>
     </main>

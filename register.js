@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const profilePicInput = document.getElementById('profilePic');
+    const inviteCodeInput = document.getElementById('inviteCode');
     const profilePicPreview = document.getElementById('profilePicPreview');
 
     // Adiciona o evento para pré-visualizar a imagem
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = usernameInput.value.trim();
         const password = passwordInput.value.trim();
         const profilePicFile = profilePicInput.files[0];
+        const inviteCode = inviteCodeInput.value.trim();
 
         if (!username || !password || !profilePicFile) {
             alert('Por favor, preencha todos os campos.');
@@ -33,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('username', username);
         formData.append('password', password);
         formData.append('profilePic', profilePicFile);
+        if (inviteCode) {
+            formData.append('inviteCode', inviteCode);
+        }
 
         try {
             const response = await fetch('/api/register', {

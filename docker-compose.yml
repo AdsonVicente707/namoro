@@ -1,0 +1,16 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: bellatrix_mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: '' # Senha vazia para o usuário root
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_DATABASE: 'bellatrix_db' # Cria o banco de dados automaticamente
+    ports:
+      - '3307:3306' # Mapeia a porta 3307 do PC para a porta 3306 do contêiner
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

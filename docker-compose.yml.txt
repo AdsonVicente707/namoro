@@ -1,0 +1,20 @@
+# c:\Users\adson.vicente_murtac\Desktop\namoro\namoro\docker-compose.yml
+
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: bellatrix_mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: '' # Senha vazia para o usuário root
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_DATABASE: 'bellatrix_db' # Cria o banco de dados automaticamente
+    ports:
+      - '3306:3306' # Mapeia a porta do contêiner para a porta do seu PC
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

@@ -13,16 +13,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendButton = document.getElementById('sendButton');
     const typingIndicator = document.getElementById('typing-indicator');
     const emojiButton = document.getElementById('emojiButton');
+    const logoutButton = document.getElementById('logoutButton');
+    // Elementos do Mural de Fotos
+    const photoUploadForm = document.getElementById('photoUploadForm');
+    const photoInput = document.getElementById('photoInput');
+    const captionInput = document.getElementById('captionInput');
+    const photoGallery = document.getElementById('photoGallery');
 
     // Pega o nome do usuário do localStorage
     const username = localStorage.getItem('bellaTrixUsername');
-    // A foto de perfil agora virá com cada mensagem do servidor
+    const coupleId = localStorage.getItem('bellaTrixCoupleId');
 
     // Se não houver usuário, volta para a página de login
-    if (!username) {
+    if (!username || !coupleId) {
         window.location.href = 'login.html';
         return; // Para a execução do script
     }
+
+    // Entra na sala do casal no servidor
+    socket.emit('join couple room', coupleId);
+
+    // Adiciona o evento de clique para o botão de logout
+    logoutButton.addEventListener('click', () => {
+        // Limpa os dados do usuário do armazenamento local
+        localStorage.removeItem('bellaTrixUsername');
+        localStorage.removeItem('bellaTrixCoupleId');
+        localStorage.removeItem('bellaTrixProfilePic');
+        window.location.href = 'login.html'; // Redireciona para a página de login
+    });
 
     let intervalId;
     let heartIntervalId;
@@ -82,8 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
         profilePicElement.src = profilePicUrl || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>';
 
         // Cria os elementos para o nome do remetente e o texto
-        const senderElement = document.createElement('strong');
+        const senderElement = document.createElement('span'); // Mudado para span para mais flexibilidade
         senderElement.textContent = sender;
+        senderElement.classList.add('sender-name'); // Adiciona uma classe para estilização
 
         // Cria o elemento para o timestamp
         const timestampElement = document.createElement('span');
@@ -100,24 +119,26 @@ document.addEventListener('DOMContentLoaded', () => {
             messageContainer.classList.add('my-message');
         }
 
-        // Cria um sub-container para o nome e a mensagem
-        const contentContainer = document.createElement('div');
-        contentContainer.append(senderElement, timestampElement); // Adiciona o timestamp aqui
-        contentContainer.appendChild(messageElement);
+        // Cria um contêiner para o nome, mensagem e timestamp
+        const contentWrapper = document.createElement('div');
+        contentWrapper.classList.add('message-content-wrapper'); // Novo wrapper para o conteúdo
+        contentWrapper.append(senderElement, messageElement, timestampElement);
 
         // Adiciona a foto e o conteúdo ao container principal
         // A ordem muda dependendo de quem enviou a mensagem
         if (sender === username) {
-            messageContainer.append(contentContainer, profilePicElement);
+            // Para mensagens do próprio usuário, o conteúdo fica à esquerda e a foto à direita
+            messageContainer.append(contentWrapper, profilePicElement);
         } else {
-            messageContainer.append(profilePicElement, contentContainer);
+            // Para mensagens recebidas, a foto fica à esquerda e o conteúdo à direita
+            messageContainer.append(profilePicElement, contentWrapper); // Correção aqui
         }
-
+        
         // Adiciona a mensagem à caixa de chat
         chatMessages.appendChild(messageContainer);
 
         // Rola para a mensagem mais recente
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        chatMessages.scrollTop = chatMessages.scrollHeight; // Movido para o final da função
     }
 
     function sendMessage() {
@@ -128,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Cria um objeto de mensagem para enviar ao servidor
         const message = {
+            coupleId: coupleId,
             sender: username,
             text: messageText,
             created_at: new Date().toISOString() // Adiciona o timestamp atual
@@ -143,8 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Ouve por mensagens vindas do servidor
-    socket.on('chat message', (msg) => {
-        addMessageToChat(msg.sender, msg.text, msg.profile_pic, msg.created_at);
+    socket.on('chat message', (msg) => { // msg agora contém username, message_text, profile_pic, created_at
+        // Usar msg.username e msg.message_text para consistência com o histórico
+        addMessageToChat(msg.username, msg.message_text, msg.profile_pic, msg.created_at);
+        chatMessages.scrollTop = chatMessages.scrollHeight; // Rola para a mensagem mais recente
     });
 
     // Ouve pelo histórico de mensagens ao se conectar
@@ -161,11 +185,11 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInput.addEventListener('input', () => {
         // Quando o usuário digita, limpa o timer anterior e avisa que está digitando
         clearTimeout(typingTimer);
-        socket.emit('typing', { sender: username });
+        socket.emit('typing', { coupleId: coupleId, sender: username });
 
         // Inicia um novo timer. Se ele terminar, significa que o usuário parou.
         typingTimer = setTimeout(() => {
-            socket.emit('stop typing');
+            socket.emit('stop typing', { coupleId: coupleId });
         }, doneTypingInterval);
     });
 
@@ -206,4 +230,76 @@ document.addEventListener('DOMContentLoaded', () => {
             sendMessage();
         }
     });
+
+    // --- Lógica do Mural de Fotos ---
+
+    // Função para carregar e exibir as fotos
+    async function loadPhotos() {
+        try {
+            const response = await fetch(`/api/photos/${coupleId}`);
+            const photos = await response.json();
+
+            photoGallery.innerHTML = ''; // Limpa a galeria antes de adicionar as fotos
+
+            photos.forEach(photo => {
+                const photoCard = document.createElement('div');
+                photoCard.classList.add('photo-card');
+
+                const img = document.createElement('img');
+                img.src = photo.image_path;
+
+                const caption = document.createElement('p');
+                caption.classList.add('caption');
+                caption.textContent = photo.caption;
+
+                const shareButton = document.createElement('button');
+                shareButton.classList.add('share-button');
+                shareButton.textContent = 'Compartilhar';
+                shareButton.onclick = () => sharePhoto(photo);
+
+                photoCard.append(img, caption, shareButton);
+                photoGallery.appendChild(photoCard);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar fotos:', error);
+        }
+    }
+
+    // Função de compartilhamento
+    async function sharePhoto(photo) {
+        const shareData = {
+            title: 'Olha nossa foto!',
+            text: photo.caption || 'Uma memória especial do nosso cantinho. ❤️',
+            url: window.location.origin + photo.image_path // URL completa da imagem
+        };
+
+        try {
+            // Usa a API de compartilhamento nativa do navegador, se disponível
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                // Fallback para navegadores que não suportam a API
+                alert('Seu navegador não suporta compartilhamento direto. Copie o link da imagem para compartilhar.');
+                // Poderíamos também abrir pop-ups para redes sociais específicas aqui.
+            }
+        } catch (err) {
+            console.error('Erro ao compartilhar:', err);
+        }
+    }
+
+    // Evento de submit do formulário de upload
+    photoUploadForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData();
+        formData.append('photo', photoInput.files[0]);
+        formData.append('caption', captionInput.value);
+        formData.append('username', username); // Envia o nome do usuário que fez o upload
+        
+        await fetch(`/api/photos/${coupleId}`, { method: 'POST', body: formData });
+        photoUploadForm.reset(); // Limpa o formulário
+        loadPhotos(); // Recarrega a galeria
+    });
+
+    // Carrega as fotos quando a página é aberta
+    loadPhotos();
 });

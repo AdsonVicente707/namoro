@@ -1,0 +1,246 @@
+*{
+    text-align: center
+    
+    
+}
+
+body {
+    background-color: rgb(247, 16, 139);
+    margin: auto;
+}
+.imagem {
+    border-radius: 10px;
+    width: 300px;
+    height: auto; /* Ajustado para manter a proporção da imagem */
+}
+
+#countButton {
+    background-color: #ff007f; /* Um rosa vibrante */
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    outline: none;
+    box-shadow: 0 0 0 0 rgba(255, 0, 127, 1);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 0, 127, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(255, 0, 127, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 0, 127, 0);
+    }
+}
+
+#counter {
+    font-size: 2em;
+    color: white;
+    font-weight: bold;
+    margin-top: 20px;
+}
+
+#romanticText {
+    font-size: 1.2em;
+    color: white;
+    margin-top: 20px;
+}
+header {
+    color: white;
+    font-size: 2em;
+}
+
+.glowing {
+    animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #ff007f, 0 0 20px #ff007f;
+    }
+    50% {
+        box-shadow: 0 0 10px #fff, 0 0 20px #ff007f, 0 0 30px #ff007f, 0 0 40px #ff007f;
+    }
+}
+
+.heart {
+    position: fixed; /* Posição fixa para flutuar sobre tudo */
+    bottom: -50px; /* Começa fora da tela, na parte de baixo */
+    font-size: 2rem; /* Tamanho do coração */
+    color: red;
+    pointer-events: none; /* Impede que os corações bloqueiem cliques */
+    animation: floatUp 10s linear forwards; /* 'forwards' mantém o estado final */
+    z-index: 9999; /* Garante que fiquem na frente */
+}
+
+@keyframes floatUp {
+    from {
+        transform: translateY(0) translateX(0);
+        opacity: 1;
+    }
+    to {
+        /* Move para cima (100vh) e um pouco para os lados (50px) */
+        transform: translateY(-100vh) translateX(50px);
+        opacity: 0;
+    }
+}
+
+/* Estilos do Chat */
+.chat-container {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 30px auto;
+    max-width: 500px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    position: relative; /* Necessário para posicionar o seletor de emojis */
+}
+
+.chat-container h2 {
+    color: white;
+    font-size: 1.5em;
+    margin-top: 0;
+}
+
+#chat-messages {
+    height: 200px;
+    background-color: white;
+    border-radius: 10px;
+    padding: 10px;
+    overflow-y: auto; /* Adiciona scroll se as mensagens passarem da altura */
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+#typing-indicator {
+    height: 20px; /* Reserva um espaço para não "pular" a tela */
+    font-style: italic;
+    color: #777;
+    padding: 0 10px 5px;
+    text-align: left;
+}
+
+.chat-input-area {
+    display: flex;
+}
+
+#emojiButton {
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    cursor: pointer;
+    padding: 0 10px;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+#emojiButton:hover {
+    opacity: 1;
+}
+
+emoji-picker {
+    position: absolute;
+    bottom: 70px; /* Posiciona acima da área de input */
+    left: 10px;
+    z-index: 100;
+}
+
+#chatInput {
+    flex-grow: 1; /* Ocupa o espaço disponível */
+    border: 2px solid #ff007f;
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-size: 1em;
+    outline: none;
+}
+
+#sendButton {
+    background-color: #ff007f;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: background-color 0.3s;
+}
+
+#sendButton:hover {
+    background-color: #e60073;
+}
+
+.message {
+    background-color: #e9e9eb; /* Cinza claro para mensagens recebidas */
+    color: #333;
+    padding: 8px 12px;
+    border-radius: 18px;
+    margin-bottom: 8px;
+    max-width: 80%;
+    word-wrap: break-word; /* Quebra palavras longas */
+    display: inline-block; /* Para que o fundo se ajuste ao texto */
+}
+
+.message-container {
+    margin-bottom: 10px;
+    display: flex; /* Alterado para flex */
+    align-items: flex-end; /* Alinha itens na base */
+}
+
+.message-container strong {
+    font-size: 0.8em;
+    color: #555;
+    margin-bottom: 4px;
+    margin-left: 5px;
+}
+
+.message-timestamp {
+    font-size: 0.7em;
+    color: #999;
+    margin-left: 8px;
+    white-space: nowrap; /* Impede que a hora quebre a linha */
+}
+
+.profile-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover; /* Garante que a imagem preencha o círculo */
+    margin-right: 10px;
+    border: 2px solid #ffcceb;
+}
+
+/* Estilos para as mensagens do próprio usuário */
+.my-message {
+    justify-content: flex-end; /* Alinha o container da mensagem à direita */
+}
+
+.my-message .profile-pic {
+    margin-right: 0;
+    margin-left: 10px;
+    border-color: #e9e9eb;
+}
+
+.my-message .message {
+    background-color: #ffcceb; /* Um rosa mais claro para as próprias mensagens */
+}
+
+.my-message strong {
+    text-align: right;
+    display: block; /* Para o text-align funcionar */
+}
+
+.my-message .message-timestamp {
+    color: #b3b3b3; /* Cor mais clara para timestamps em mensagens próprias */
+}

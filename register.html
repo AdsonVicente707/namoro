@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bella-Trix | Criar Conta</title>
+    <link rel="stylesheet" href="login.css"> <!-- Reutilizando o estilo do login -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>❤️</text></svg>">
+</head>
+<body>
+    <div class="login-container">
+        <form id="registerForm">
+            <h1>Bella-Trix</h1>
+            <p>Crie seu acesso ao nosso mundo.</p>
+            <!-- Container para a pré-visualização da foto -->
+            <div class="profile-pic-preview-container">
+                <img id="profilePicPreview" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>" alt="Pré-visualização do perfil">
+            </div>
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Seu nome ou apelido" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="Crie uma palavra secreta" required>
+            </div>
+            <div class="input-group">
+                <label for="profilePic" class="file-label">Escolha uma foto de perfil</label>
+                <input type="file" id="profilePic" accept="image/*" required>
+            </div>
+            <button type="submit">Criar Conta</button>
+        </form>
+    </div>
+    <script src="register.js"></script>
+</body>
+</html>

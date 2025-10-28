@@ -98,44 +98,56 @@ app.post('/api/register', upload.single('profilePic'), async (req, res) => {
 // Rota de Login
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
-    try {
-        const [rows] = await dbPool.execute('SELECT * FROM users WHERE username = ?', [username]);
-        if (rows.length === 0) {
-            return res.status(401).json({ success: false, message: 'Usuário ou senha inválidos.' });
-        }
 
-        const user = rows[0];
-        const isMatch = await bcrypt.compare(password, user.password);
+    // Usuários e senha permitidos
+    const allowedUsers = ['adson', 'isabella'];
+    const correctPassword = '0209';
 
-        if (isMatch) {
-            // Retorna também o couple_id para o cliente
-            res.json({ 
-                success: true, 
-                username: user.username, 
-                coupleId: user.couple_id,
-                profile_pic: user.profile_pic // Adiciona a foto de perfil na resposta
-            });
-        } else {
-            res.status(401).json({ success: false, message: 'Usuário ou senha inválidos.' });
-        }
-    } catch (error) {
-        console.error('Erro no login:', error);
-        res.status(500).json({ success: false, message: 'Erro no servidor.' });
+    // Verifica se o usuário e a senha estão corretos
+    if (allowedUsers.includes(username.toLowerCase()) && password === correctPassword) {
+        // Login bem-sucedido
+        // Retorna uma resposta que o frontend espera, com valores fixos.
+        // O coupleId é fixo como '1' para garantir que ambos caiam na mesma "sala".
+        // A foto de perfil é um placeholder genérico.
+        res.json({
+            success: true,
+            username: username,
+            coupleId: '1', // ID do casal fixo para ambos os usuários
+            profile_pic: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>'
+        });
+    } else {
+        // Login falhou
+        res.status(401).json({ success: false, message: 'Usuário ou senha inválidos.' });
     }
 });
 
 // Rota para buscar todas as fotos do mural
 app.get('/api/photos/:coupleId', async (req, res) => {
     const { coupleId } = req.params;
+    const { username } = req.query; // Pega o username dos parâmetros da query
+
     try {
+        // Pega o ID do usuário que está fazendo a requisição
+        const [users] = await dbPool.execute('SELECT id FROM users WHERE username = ?', [username]);
+        const requestingUserId = users.length > 0 ? users[0].id : null;
+
         const [photos] = await dbPool.execute(
-            `SELECT p.id, p.image_path, p.caption, u.username as uploaded_by 
-             FROM couple_photos p 
-             LEFT JOIN users u ON p.uploaded_by_user_id = u.id 
-             WHERE p.couple_id = ?
-             ORDER BY p.created_at DESC`, [coupleId]
+            `SELECT 
+                p.id, 
+                p.image_path, 
+                p.caption, 
+                u.username as uploaded_by,
+                (SELECT COUNT(*) FROM photo_likes pl WHERE pl.photo_id = p.id) as like_count,
+                (SELECT COUNT(*) FROM photo_likes pl WHERE pl.photo_id = p.id AND pl.user_id = ?) as user_has_liked
+             FROM couple_photos p
+             LEFT JOIN users u ON p.uploaded_by_user_id = u.id
+             WHERE p.couple_id = ? 
+             ORDER BY p.created_at DESC`,
+            [requestingUserId, coupleId]
         );
-        res.json(photos);
+        // Converte user_has_liked para booleano
+        const photosWithLikes = photos.map(p => ({ ...p, user_has_liked: p.user_has_liked > 0 }));
+        res.json(photosWithLikes);
     } catch (error) {
         console.error('Erro ao buscar fotos do mural:', error);
         res.status(500).json({ success: false, message: 'Erro ao buscar fotos.' });
@@ -167,6 +179,83 @@ app.post('/api/photos/:coupleId', upload.single('photo'), async (req, res) => {
     }
 });
 
+// Rota para curtir/descurtir uma foto
+app.post('/api/photos/:photoId/like', async (req, res) => {
+    const { photoId } = req.params;
+    const { username } = req.body;
+
+    try {
+        // 1. Encontrar o ID do usuário
+        const [users] = await dbPool.execute('SELECT id FROM users WHERE username = ?', [username]);
+        if (users.length === 0) {
+            return res.status(403).json({ success: false, message: 'Usuário inválido.' });
+        }
+        const userId = users[0].id;
+
+        // 2. Verificar se o usuário já curtiu a foto
+        const [likes] = await dbPool.execute('SELECT id FROM photo_likes WHERE user_id = ? AND photo_id = ?', [userId, photoId]);
+
+        if (likes.length > 0) {
+            // Se já curtiu, descurte (remove o like)
+            await dbPool.execute('DELETE FROM photo_likes WHERE id = ?', [likes[0].id]);
+        } else {
+            // Se não curtiu, curta (adiciona o like)
+            await dbPool.execute('INSERT INTO photo_likes (user_id, photo_id) VALUES (?, ?)', [userId, photoId]);
+        }
+
+        // 3. Retornar a nova contagem de curtidas
+        const [countResult] = await dbPool.execute('SELECT COUNT(*) as like_count FROM photo_likes WHERE photo_id = ?', [photoId]);
+        const newLikeCount = countResult[0].like_count;
+
+        res.json({
+            success: true,
+            newLikeCount: newLikeCount
+        });
+    } catch (error) {
+        console.error('Erro ao curtir/descurtir foto:', error);
+        res.status(500).json({ success: false, message: 'Erro no servidor.' });
+    }
+});
+
+// Rota para EXCLUIR uma foto do mural
+app.delete('/api/photos/:photoId', async (req, res) => {
+    const { photoId } = req.params;
+    const { username } = req.body; // Username de quem está pedindo para excluir
+
+    if (!username) {
+        return res.status(400).json({ success: false, message: 'Nome de usuário não fornecido.' });
+    }
+
+    try {
+        // 1. Pega o ID do usuário que está fazendo a requisição
+        const [requestingUsers] = await dbPool.execute('SELECT id FROM users WHERE username = ?', [username]);
+        if (requestingUsers.length === 0) {
+            return res.status(403).json({ success: false, message: 'Usuário inválido.' });
+        }
+        const requestingUserId = requestingUsers[0].id;
+
+        // 2. Pega os detalhes da foto, incluindo quem a postou e o caminho do arquivo
+        const [photos] = await dbPool.execute('SELECT uploaded_by_user_id, image_path FROM couple_photos WHERE id = ?', [photoId]);
+        if (photos.length === 0) {
+            return res.status(404).json({ success: false, message: 'Foto não encontrada.' });
+        }
+        const photo = photos[0];
+
+        // 3. Verifica se o usuário que pediu para excluir é o mesmo que postou
+        if (photo.uploaded_by_user_id !== requestingUserId) {
+            return res.status(403).json({ success: false, message: 'Você não tem permissão para excluir esta foto.' });
+        }
+
+        // 4. Exclui a foto do banco de dados
+        await dbPool.execute('DELETE FROM couple_photos WHERE id = ?', [photoId]);
+
+        res.json({ success: true, message: 'Foto excluída com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao excluir foto:', error);
+        res.status(500).json({ success: false, message: 'Erro ao excluir a foto.' });
+    }
+});
+
 // Lógica do Socket.IO para o chat
 io.on('connection', async (socket) => {
     console.log('Um usuário se conectou');
@@ -179,13 +268,13 @@ io.on('connection', async (socket) => {
         // Enviar histórico de mensagens do casal
         try {
             const [messages] = await dbPool.execute(
-                `SELECT m.message_text, m.created_at, u.username, u.profile_pic 
+                `SELECT m.id, m.message_text, m.created_at, u.username, u.profile_pic 
                  FROM messages m
                  JOIN users u ON m.sender_user_id = u.id 
                  WHERE m.couple_id = ?
-                 ORDER BY m.created_at ASC LIMIT 50`, [coupleId]
+                 ORDER BY m.created_at DESC LIMIT 30`, [coupleId] // DESC para pegar as mais recentes
             );
-            socket.emit('chat history', messages);
+            socket.emit('chat history', messages.reverse()); // Reverte para enviar em ordem cronológica
         } catch (error) {
             console.error("Erro ao buscar histórico de mensagens:", error);
         }
@@ -214,6 +303,27 @@ io.on('connection', async (socket) => {
         }
     } catch (error) {
         console.error("Erro ao salvar ou enviar mensagem:", error);
+    }
+  });
+
+  // Novo evento para carregar mensagens mais antigas
+  socket.on('request older messages', async (data) => {
+    const { coupleId, oldestMessageId } = data;
+    try {
+        const [messages] = await dbPool.execute(
+            `SELECT m.id, m.message_text, m.created_at, u.username, u.profile_pic 
+             FROM messages m
+             JOIN users u ON m.sender_user_id = u.id 
+             WHERE m.couple_id = ? AND m.id < ?
+             ORDER BY m.created_at DESC LIMIT 20`, // Busca 20 mensagens mais antigas
+            [coupleId, oldestMessageId]
+        );
+
+        // Envia as mensagens mais antigas de volta para o cliente que pediu
+        // Reverte para que o cliente possa prependê-las na ordem correta (mais antiga primeiro)
+        socket.emit('older messages loaded', messages.reverse());
+    } catch (error) {
+        console.error("Erro ao buscar mensagens antigas:", error);
     }
   });
 

@@ -89,10 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // A função agora aceita o remetente e o texto da mensagem
-    function addMessageToChat(sender, messageText, profilePicUrl, timestamp) {
+    function createMessageElement(messageData) {
+        const { id, username: sender, message_text: messageText, profile_pic: profilePicUrl, created_at: timestamp } = messageData;
         // Cria o contêiner principal da mensagem
         const messageContainer = document.createElement('div');
         messageContainer.classList.add('message-container');
+        messageContainer.dataset.messageId = id; // Armazena o ID da mensagem no elemento
 
         // Cria o elemento da foto de perfil
         const profilePicElement = document.createElement('img');
@@ -133,12 +135,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // Para mensagens recebidas, a foto fica à esquerda e o conteúdo à direita
             messageContainer.append(profilePicElement, contentWrapper); // Correção aqui
         }
-        
-        // Adiciona a mensagem à caixa de chat
-        chatMessages.appendChild(messageContainer);
 
-        // Rola para a mensagem mais recente
-        chatMessages.scrollTop = chatMessages.scrollHeight; // Movido para o final da função
+        return messageContainer;
+    }
+
+    function addMessageToChat(messageData, prepend = false) {
+        const messageElement = createMessageElement(messageData);
+
+        // Adiciona a mensagem à caixa de chat
+        if (prepend) {
+            chatMessages.prepend(messageElement);
+        } else {
+            chatMessages.appendChild(messageElement);
+            // Rola para a mensagem mais recente apenas se não for prepended
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
     }
 
     function sendMessage() {
@@ -166,15 +177,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Ouve por mensagens vindas do servidor
     socket.on('chat message', (msg) => { // msg agora contém username, message_text, profile_pic, created_at
-        // Usar msg.username e msg.message_text para consistência com o histórico
-        addMessageToChat(msg.username, msg.message_text, msg.profile_pic, msg.created_at);
-        chatMessages.scrollTop = chatMessages.scrollHeight; // Rola para a mensagem mais recente
+        addMessageToChat(msg);
     });
 
     // Ouve pelo histórico de mensagens ao se conectar
     socket.on('chat history', (messages) => {
+        chatMessages.innerHTML = ''; // Limpa o chat antes de carregar o histórico
         messages.forEach(msg => {
-            addMessageToChat(msg.username, msg.message_text, msg.profile_pic, msg.created_at);
+            addMessageToChat(msg);
+        });
+        // Garante que o scroll comece no final
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    // --- Lógica de Carregar Mensagens Antigas ---
+    let isLoadingOlderMessages = false;
+
+    chatMessages.addEventListener('scroll', () => {
+        // Se o scroll estiver no topo e não estivermos já carregando mensagens
+        if (chatMessages.scrollTop === 0 && !isLoadingOlderMessages) {
+            isLoadingOlderMessages = true;
+
+            // Pega a primeira mensagem (a mais antiga) na tela
+            const oldestMessageElement = chatMessages.querySelector('.message-container');
+            if (oldestMessageElement) {
+                const oldestMessageId = oldestMessageElement.dataset.messageId;
+                socket.emit('request older messages', { coupleId, oldestMessageId });
+            } else {
+                isLoadingOlderMessages = false; // Não há mensagens para basear a busca
+            }
+        }
+    });
+
+    // Ouve pelas mensagens antigas carregadas
+    socket.on('older messages loaded', (messages) => {
+        if (messages.length > 0) {
+            const oldScrollHeight = chatMessages.scrollHeight; // Altura antes de adicionar novas mensagens
+
+            messages.forEach(msg => {
+                addMessageToChat(msg, true); // 'true' para prepend (adicionar no início)
+            });
+
+            // Restaura a posição do scroll para que não pule para o topo
+            chatMessages.scrollTop = chatMessages.scrollHeight - oldScrollHeight;
         });
     });
 
@@ -236,14 +281,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Função para carregar e exibir as fotos
     async function loadPhotos() {
         try {
-            const response = await fetch(`/api/photos/${coupleId}`);
+            const response = await fetch(`/api/photos/${coupleId}?username=${username}`); // Envia o username para saber o status do like
             const photos = await response.json();
 
             photoGallery.innerHTML = ''; // Limpa a galeria antes de adicionar as fotos
 
-            photos.forEach(photo => {
+            photos.forEach((photo, index) => {
                 const photoCard = document.createElement('div');
                 photoCard.classList.add('photo-card');
+
+                // Adiciona um atraso na animação para criar um efeito cascata
+                photoCard.style.animationDelay = `${index * 0.1}s`;
 
                 const img = document.createElement('img');
                 img.src = photo.image_path;
@@ -252,16 +300,85 @@ document.addEventListener('DOMContentLoaded', () => {
                 caption.classList.add('caption');
                 caption.textContent = photo.caption;
 
-                const shareButton = document.createElement('button');
-                shareButton.classList.add('share-button');
-                shareButton.textContent = 'Compartilhar';
-                shareButton.onclick = () => sharePhoto(photo);
+                // --- Lógica de Curtidas ---
+                const photoActions = document.createElement('div');
+                photoActions.classList.add('photo-actions');
 
-                photoCard.append(img, caption, shareButton);
+                const likeButton = document.createElement('span');
+                likeButton.classList.add('like-button');
+                likeButton.innerHTML = photo.user_has_liked ? '❤️' : '🤍'; // Coração preenchido ou vazio
+                likeButton.onclick = () => likePhoto(photo.id, likeButton, likeCount);
+
+                const likeCount = document.createElement('span');
+                likeCount.classList.add('like-count');
+                likeCount.textContent = photo.like_count;
+
+                photoActions.append(likeButton, likeCount);
+
+                // Verifica se o usuário logado é o autor da foto
+                if (photo.uploaded_by === username) {
+                    const deleteButton = document.createElement('button');
+                    deleteButton.classList.add('delete-photo-button');
+                    deleteButton.textContent = 'Excluir';
+                    deleteButton.onclick = () => deletePhoto(photo.id, photoCard);
+                    photoCard.appendChild(deleteButton);
+                }
+
+                photoCard.append(img, caption, photoActions);
+
                 photoGallery.appendChild(photoCard);
             });
         } catch (error) {
             console.error('Erro ao carregar fotos:', error);
+        }
+    }
+
+    // Função para curtir/descurtir uma foto
+    async function likePhoto(photoId, buttonElement, countElement) {
+        try {
+            const response = await fetch(`/api/photos/${photoId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                // Atualiza a contagem de curtidas na tela
+                countElement.textContent = result.newLikeCount;
+
+                // Alterna o ícone do coração
+                const isLiked = buttonElement.innerHTML === '❤️';
+                buttonElement.innerHTML = isLiked ? '🤍' : '❤️';
+            }
+        } catch (error) {
+            console.error('Erro ao curtir foto:', error);
+        }
+    }
+
+    // Função para deletar uma foto
+    async function deletePhoto(photoId, cardElement) {
+        // Confirmação para evitar exclusões acidentais
+        if (!confirm('Tem certeza que deseja excluir esta memória?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/photos/${photoId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username }) // Envia o username para verificação no backend
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                cardElement.remove(); // Remove o card da foto da tela
+            } else {
+                alert(result.message); // Exibe mensagem de erro (ex: falta de permissão)
+            }
+        } catch (error) {
+            console.error('Erro ao deletar foto:', error);
+            alert('Não foi possível excluir a foto.');
         }
     }
 

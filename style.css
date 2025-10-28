@@ -345,6 +345,22 @@ emoji-picker {
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: relative; /* Necessário para posicionar o botão de excluir */
+
+    /* Animação de entrada */
+    opacity: 0; /* Começa invisível */
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .photo-card img {
@@ -360,15 +376,47 @@ emoji-picker {
     text-align: left;
 }
 
-.photo-card .share-button {
-    display: block;
-    width: calc(100% - 20px);
-    margin: 0 10px 10px;
-    padding: 8px;
-    background-color: #3498db;
+.photo-actions {
+    display: flex;
+    align-items: center;
+    padding: 0 10px 10px;
+    gap: 8px;
+}
+
+.like-button {
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.like-button:hover {
+    transform: scale(1.2);
+}
+
+.like-count {
+    font-size: 1em;
+    font-weight: bold;
+    color: #555;
+}
+
+.delete-photo-button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: rgba(255, 77, 77, 0.8); /* Vermelho translúcido */
     color: white;
     border: none;
-    border-radius: 5px;
-    cursor: pointer;
+    border-radius: 50%; /* Botão redondo */
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
     font-weight: bold;
+    cursor: pointer;
+    line-height: 30px; /* Centraliza o 'X' ou texto */
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+.delete-photo-button:hover {
+    background-color: rgb(255, 20, 20);
 }

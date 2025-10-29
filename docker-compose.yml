@@ -9,6 +9,7 @@ services:
       MYSQL_DATABASE: 'bellatrix_db' # Cria o banco de dados automaticamente
     ports:
       - '3307:3306' # Mapeia a porta 3307 do PC para a porta 3306 do contêiner
+      - '3307:3306' # Mapeia a porta 3307 do seu PC para a porta 3306 do contêiner
     volumes:
       - mysql_data:/var/lib/mysql
 

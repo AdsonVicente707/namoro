@@ -33,6 +33,8 @@
                 <input type="text" id="chatInput" placeholder="Digite sua mensagem...">
                 <button id="sendButton">Enviar</button>
             </div>
+            <!-- Biblioteca de Emojis -->
+            <emoji-picker></emoji-picker>
         </section>
         <!-- Seção do Mural de Fotos -->
         <section class="photo-wall-container">
@@ -53,8 +55,7 @@
     </footer>
     <!-- Elemento de áudio para a música de fundo -->
     <!-- Certifique-se de ter um arquivo 'crepusculo.mp3' na pasta 'audio' -->
-    <audio id="backgroundMusic" loop src="audio/crepusculo.mp3"></audio>
-    <!-- Biblioteca de Emojis -->
+    <audio id="backgroundMusic" loop src="audio/crepusculo.mp3"></audio>    
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <!-- Script do cliente Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
